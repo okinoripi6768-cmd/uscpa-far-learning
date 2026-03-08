@@ -178,14 +178,27 @@ async function selectRound2PlusTasks(tasks: DailyTask[], limit: number): Promise
 
   const selected: DailyTask[] = [];
 
+  const minNewTasks = Math.ceil(limit * 0.6);
+  const maxReviewTasks = Math.floor(limit * 0.4);
+
   for (const task of neverCompletedTasks) {
-    if (selected.length >= limit) break;
+    if (selected.length >= minNewTasks) break;
     selected.push(task);
   }
 
   for (const task of priorityTasks) {
     if (selected.length >= limit) break;
+    const currentReviewCount = selected.filter(t => t.isPriority).length;
+    if (currentReviewCount >= maxReviewTasks) break;
     selected.push(task);
+  }
+
+  if (selected.length < limit) {
+    for (const task of neverCompletedTasks) {
+      if (selected.some(s => s.task.id === task.task.id)) continue;
+      if (selected.length >= limit) break;
+      selected.push(task);
+    }
   }
 
   if (selected.length < limit) {
