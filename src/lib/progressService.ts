@@ -538,39 +538,74 @@ export async function exportMCProgressToCSV(currentRound: number): Promise<strin
   }
 
   const headers = [
-    'Chapter',
-    'Lecture',
-    'Section',
-    'Task Name',
-    'Round Unlock',
-    'Status',
-    'Last Result',
-    'Completed Date',
-    'Last Completed At',
-    'Next Review Date',
-    'Notes'
+    'チャプター',
+    'レクチャー',
+    'セクション',
+    '問題名',
+    'ラウンド',
+    '解答回数',
+    '正解回数',
+    '不正解回数',
+    '最終結果',
+    'ステータス',
+    '完了日',
+    '次回復習日',
+    'ノート'
   ];
 
   const rows = mcTasks.map(task => {
-    const progress = Array.isArray(task.progress)
-      ? task.progress.find((p: TaskProgress) => p.current_round === currentRound)
-      : null;
+    const progressRecords = Array.isArray(task.progress)
+      ? task.progress.filter((p: TaskProgress) => p.current_round === currentRound)
+      : [];
+
+    const currentProgress = progressRecords.length > 0 ? progressRecords[0] : null;
+
+    let totalAttempts = 0;
+    let correctCount = 0;
+    let incorrectCount = 0;
+
+    for (const p of progressRecords) {
+      if (p.last_result === 'correct') {
+        totalAttempts++;
+        correctCount++;
+      } else if (p.last_result === 'incorrect') {
+        totalAttempts++;
+        incorrectCount++;
+      }
+    }
+
+    if (currentProgress?.status === 'completed' && totalAttempts === 0) {
+      totalAttempts = 1;
+      if (currentProgress.last_result === 'correct') {
+        correctCount = 1;
+      } else if (currentProgress.last_result === 'incorrect') {
+        incorrectCount = 1;
+      }
+    }
 
     const chapter = task.chapter as Chapter | null;
     const lecture = task.lecture as Lecture | null;
 
+    const lastResult = currentProgress?.last_result === 'correct' ? '正解' :
+                      currentProgress?.last_result === 'incorrect' ? '不正解' : '未実施';
+
+    const status = currentProgress?.status === 'completed' ? '完了' :
+                   currentProgress?.status === 'in_progress' ? '進行中' : '未着手';
+
     return [
-      chapter?.title || 'N/A',
-      lecture?.title || 'N/A',
-      task.section_name || 'N/A',
+      chapter?.title || '',
+      lecture?.title || '',
+      task.section_name || '',
       task.task_name,
-      task.round_unlock,
-      progress?.status || 'pending',
-      progress?.last_result || 'N/A',
-      progress?.completed_at || 'N/A',
-      progress?.last_completed_at || 'N/A',
-      progress?.next_review_date || 'N/A',
-      progress?.notes?.replace(/"/g, '""') || ''
+      task.round_unlock.toString(),
+      totalAttempts.toString(),
+      correctCount.toString(),
+      incorrectCount.toString(),
+      lastResult,
+      status,
+      currentProgress?.completed_at || '',
+      currentProgress?.next_review_date || '',
+      currentProgress?.notes?.replace(/"/g, '""') || ''
     ];
   });
 
@@ -584,13 +619,14 @@ export async function exportMCProgressToCSV(currentRound: number): Promise<strin
 
 export async function downloadMCProgressCSV(currentRound: number): Promise<void> {
   const csvContent = await exportMCProgressToCSV(currentRound);
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   const today = new Date().toISOString().split('T')[0];
 
   link.setAttribute('href', url);
-  link.setAttribute('download', `mc_progress_round${currentRound}_${today}.csv`);
+  link.setAttribute('download', `MC問題進捗_Round${currentRound}_${today}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
