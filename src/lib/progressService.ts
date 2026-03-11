@@ -554,37 +554,16 @@ export async function exportMCProgressToCSV(currentRound: number): Promise<strin
   ];
 
   const rows = mcTasks.map(task => {
-    const progressRecords = Array.isArray(task.progress)
-      ? task.progress.filter((p: TaskProgress) => p.current_round === currentRound)
-      : [];
-
-    const currentProgress = progressRecords.length > 0 ? progressRecords[0] : null;
-
-    let totalAttempts = 0;
-    let correctCount = 0;
-    let incorrectCount = 0;
-
-    for (const p of progressRecords) {
-      if (p.last_result === 'correct') {
-        totalAttempts++;
-        correctCount++;
-      } else if (p.last_result === 'incorrect') {
-        totalAttempts++;
-        incorrectCount++;
-      }
-    }
-
-    if (currentProgress?.status === 'completed' && totalAttempts === 0) {
-      totalAttempts = 1;
-      if (currentProgress.last_result === 'correct') {
-        correctCount = 1;
-      } else if (currentProgress.last_result === 'incorrect') {
-        incorrectCount = 1;
-      }
-    }
+    const currentProgress = Array.isArray(task.progress)
+      ? task.progress.find((p: TaskProgress) => p.current_round === currentRound)
+      : null;
 
     const chapter = task.chapter as Chapter | null;
     const lecture = task.lecture as Lecture | null;
+
+    const totalAttempts = currentProgress?.status === 'completed' ? 1 : 0;
+    const correctCount = currentProgress?.last_result === 'correct' ? 1 : 0;
+    const incorrectCount = currentProgress?.last_result === 'incorrect' ? 1 : 0;
 
     const lastResult = currentProgress?.last_result === 'correct' ? '正解' :
                       currentProgress?.last_result === 'incorrect' ? '不正解' : '未実施';
