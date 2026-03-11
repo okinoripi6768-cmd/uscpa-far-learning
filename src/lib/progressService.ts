@@ -516,3 +516,83 @@ export async function bulkCompleteLectures(
 
   return { success: true, tasksUpdated };
 }
+
+export async function exportMCProgressToCSV(currentRound: number): Promise<string> {
+  const { data: mcTasks } = await supabase
+    .from('tasks')
+    .select(`
+      *,
+      progress:task_progress(*),
+      chapter:chapters(*),
+      lecture:lectures(*)
+    `)
+    .eq('task_type', 'mc')
+    .lte('round_unlock', currentRound)
+    .order('chapter_id')
+    .order('lecture_id')
+    .order('section_order')
+    .order('task_order');
+
+  if (!mcTasks) {
+    throw new Error('Failed to fetch MC tasks');
+  }
+
+  const headers = [
+    'Chapter',
+    'Lecture',
+    'Section',
+    'Task Name',
+    'Round Unlock',
+    'Status',
+    'Last Result',
+    'Completed Date',
+    'Last Completed At',
+    'Next Review Date',
+    'Notes'
+  ];
+
+  const rows = mcTasks.map(task => {
+    const progress = Array.isArray(task.progress)
+      ? task.progress.find((p: TaskProgress) => p.current_round === currentRound)
+      : null;
+
+    const chapter = task.chapter as Chapter | null;
+    const lecture = task.lecture as Lecture | null;
+
+    return [
+      chapter?.title || 'N/A',
+      lecture?.title || 'N/A',
+      task.section_name || 'N/A',
+      task.task_name,
+      task.round_unlock,
+      progress?.status || 'pending',
+      progress?.last_result || 'N/A',
+      progress?.completed_at || 'N/A',
+      progress?.last_completed_at || 'N/A',
+      progress?.next_review_date || 'N/A',
+      progress?.notes?.replace(/"/g, '""') || ''
+    ];
+  });
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n');
+
+  return csvContent;
+}
+
+export async function downloadMCProgressCSV(currentRound: number): Promise<void> {
+  const csvContent = await exportMCProgressToCSV(currentRound);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  const today = new Date().toISOString().split('T')[0];
+
+  link.setAttribute('href', url);
+  link.setAttribute('download', `mc_progress_round${currentRound}_${today}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}

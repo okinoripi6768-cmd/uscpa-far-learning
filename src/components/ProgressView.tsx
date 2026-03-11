@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, CheckCircle, XCircle, Clock, TrendingUp, FastForward } from 'lucide-react';
-import { getChapterProgress, getOverallStats, getMCStats } from '../lib/progressService';
+import { BookOpen, CheckCircle, XCircle, Clock, TrendingUp, FastForward, Download } from 'lucide-react';
+import { getChapterProgress, getOverallStats, getMCStats, downloadMCProgressCSV } from '../lib/progressService';
 import { BulkProgressUpdate } from './BulkProgressUpdate';
 import { ChapterDetailModal } from './ChapterDetailModal';
 import type { ChapterProgress } from '../lib/progressService';
@@ -58,6 +58,17 @@ export function ProgressView({ settings }: ProgressViewProps) {
 
   function handleBulkUpdateSuccess() {
     loadProgress();
+  }
+
+  async function handleExportMCProgress() {
+    if (!settings) return;
+
+    try {
+      await downloadMCProgressCSV(settings.current_round);
+    } catch (error) {
+      console.error('Error exporting MC progress:', error);
+      alert('MC問題の進捗データのエクスポートに失敗しました。');
+    }
   }
 
   if (isLoading) {
@@ -167,7 +178,16 @@ export function ProgressView({ settings }: ProgressViewProps) {
         </div>
 
         <div className="border-t border-gray-200 pt-4 mt-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">MC問題のみ</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">MC問題のみ</h3>
+            <button
+              onClick={handleExportMCProgress}
+              className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5 touch-manipulation"
+            >
+              <Download className="w-3.5 h-3.5" />
+              進捗をエクスポート
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-4 mb-3">
             <div className="bg-amber-50 rounded-lg p-3">
               <div className="text-xs text-gray-600 mb-1">進捗率</div>
