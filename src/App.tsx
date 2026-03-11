@@ -8,6 +8,7 @@ import { NotesReview } from './components/NotesReview';
 import { FlashcardReview } from './components/FlashcardReview';
 import { RoleplayPractice } from './components/RoleplayPractice';
 import { InstantTranslation } from './components/InstantTranslation';
+import { PasswordProtection } from './components/PasswordProtection';
 import { getTodaysTasks, getUserSettings, completeTask, updateUserSettings, resetProgress, getTodaysCompletedCount, getOverallProgress, getWeeklyStats, getAllChapters } from './lib/taskService';
 import { getFlashcardStats } from './lib/flashcardService';
 import { getRoleplayStats } from './lib/roleplayService';
@@ -17,6 +18,11 @@ import type { DailyTask, TaskResult, UserSettings, OverallProgress, Chapter } fr
 type ViewMode = 'today' | 'progress' | 'studytime';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  if (!isAuthenticated) {
+    return <PasswordProtection onAuthenticated={() => setIsAuthenticated(true)} />;
+  }
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
